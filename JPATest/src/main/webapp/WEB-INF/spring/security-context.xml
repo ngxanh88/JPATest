@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans:beans xmlns:s="http://www.springframework.org/schema/security"
+	xmlns:beans="http://www.springframework.org/schema/beans" 
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans 
+						http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+                        http://www.springframework.org/schema/security 
+                        http://www.springframework.org/schema/security/spring-security-3.2.xsd">
+
+	<s:global-method-security pre-post-annotations="enabled" />
+
+
+
+	<s:http auto-config="true" use-expressions="true">
+		<s:intercept-url pattern="/admin*" access="isAuthenticated()" />
+		<s:intercept-url pattern="/user*" access="isAuthenticated()" />
+		<s:intercept-url pattern="/greeting" access="hasRole('ROLE_SHOP OWNER')" />
+
+		<!-- Custom login page -->
+		<s:form-login login-page="/login" 
+					default-target-url="/"
+					authentication-failure-url="/login?error" />
+
+		<!-- Custom logout page -->
+		<s:logout logout-url="/logout" logout-success-url="/login?logout" />
+		
+		 <s:remember-me data-source-ref="dataSource" />
+	</s:http>
+
+
+
+
+
+
+	<!-- create context for ldap server -->
+	<beans:bean id="contextSource"
+		class="org.springframework.security.ldap.DefaultSpringSecurityContextSource">
+		<beans:constructor-arg value="${spring.ldap.url}${spring.ldap.managerDn}" />
+		<beans:property name="anonymousReadOnly" value="true" />
+	</beans:bean>
+
+	<!-- ldap template to add entry to ldap -->
+	<beans:bean id="ldapTemplate"
+		class="org.springframework.ldap.core.LdapTemplate">
+		<beans:constructor-arg ref="contextSource" />
+	</beans:bean>
+	
+<!-- 	<beans:bean id="registerService" -->
+<!-- 		class="de.escasia.portal.manager.bean.services.impl.RegisterServiceImpl"> -->
+<!-- 		<beans:property name="ldapTemplate" ref="ldapTemplate" /> -->
+<!-- 	</beans:bean> -->
+
+	<!-- create user search in ldap -->
+	<beans:bean id="userSearch"
+		class="org.springframework.security.ldap.search.FilterBasedLdapUserSearch">
+		<beans:constructor-arg index="0" value="${spring.ldap.userSearchBase}" />
+		<beans:constructor-arg index="1" value="(uid={0})" />
+		<beans:constructor-arg index="2" ref="contextSource" />
+	</beans:bean>
+
+	<!-- ldap provider which is implemented by spring -->
+	<beans:bean id="ldapAuthProvider"
+		class="org.springframework.security.ldap.authentication.LdapAuthenticationProvider">
+		<beans:constructor-arg>
+			<beans:bean
+				class="org.springframework.security.ldap.authentication.BindAuthenticator">
+				<beans:constructor-arg ref="contextSource" />
+				<beans:property name="userSearch" ref="userSearch" />			
+			</beans:bean>
+		</beans:constructor-arg>
+
+		<beans:constructor-arg>
+			<beans:bean
+				class="org.springframework.security.ldap.userdetails.DefaultLdapAuthoritiesPopulator">
+				<beans:constructor-arg ref="contextSource" />
+				<beans:constructor-arg value="${spring.ldap.groupSearchBase}" />
+				<beans:property name="groupRoleAttribute" value="${spring.ldap.groupRoleAttribute}" />
+			</beans:bean>
+		</beans:constructor-arg>
+		
+		
+		
+		
+		
+		
+		<!-- use customLdapAuthoritiesPopulator to map user to role which is given by the application 
+		and not by ldap -->
+<!-- 		<beans:constructor-arg> -->
+<!-- 			<beans:bean -->
+<!-- 				class="gr.serafeim.springldapcustom.CustomLdapAuthoritiesPopulator" /> -->
+<!-- 		</beans:constructor-arg> -->
+
+	</beans:bean>
+
+
+	<s:authentication-manager alias="authenticationManager">
+		<!-- <security:authentication-provider ref="ldapAuthProvider" /> -->
+		<s:ldap-authentication-provider
+			server-ref="contextSource" 		
+			user-search-base="${spring.ldap.userSearchBase}"
+			user-search-filter="${spring.ldap.userSearchFilter}" 	
+			group-role-attribute="${spring.ldap.groupRoleAttribute}"
+			group-search-base="${spring.ldap.groupSearchBase}"
+			group-search-filter="${spring.ldap.groupSearchFilter}">
+		</s:ldap-authentication-provider>
+	</s:authentication-manager>
+	
+	
+	
+	<!-- use custom provider -->
+	
+<!-- 	<beans:bean id="customUserDetailsService" scope="prototype" -->
+<!-- 		class="de.escasia.portal.manager.security.CustomUserDetailsService" /> -->
+
+<!-- 	<beans:bean id="customAuthenticationProvider" -->
+<!-- 		class="de.escasia.portal.manager.security.CustomAuthenticationProvider"> -->
+<!-- 		<beans:property name="userDetailsService" ref="customUserDetailsService" /> -->
+<!-- 	</beans:bean> -->
+
+<!-- 	<security:authentication-manager alias="authenticationManager"> -->
+<!-- 		<security:authentication-provider -->
+<!-- 			ref="customAuthenticationProvider" /> -->
+<!-- 	</security:authentication-manager> -->
+
+	
+	
+	
+	<!-- 	Remember me!!! -->
+	
+	<beans:bean id="tokenRepository"
+      class="org.springframework.security.web.authentication.rememberme.JdbcTokenRepositoryImpl">
+      <beans:property name="createTableOnStartup" value="false" />
+      <beans:property name="dataSource" ref="dataSource"/>
+    </beans:bean>
+    
+    <beans:bean id="dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+        <beans:property name="driverClassName" value="${jdbc.driver}" />
+        <beans:property name="url" value="${jdbc.url}${jdbc.dbName}" />
+        <beans:property name="username" value="${jdbc.username}" />
+        <beans:property name="password" value="${jdbc.password}" />
+    </beans:bean>
+    
+    <s:ldap-user-service 
+    			server-ref="contextSource" 		
+			user-search-base="${spring.ldap.userSearchBase}"
+			user-search-filter="${spring.ldap.userSearchFilter}" 	
+			group-role-attribute="${spring.ldap.groupRoleAttribute}"
+			group-search-base="${spring.ldap.groupSearchBase}"
+			group-search-filter="${spring.ldap.groupSearchFilter}" />
+
+</beans:beans>

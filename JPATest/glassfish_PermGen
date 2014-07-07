@@ -1,0 +1,29 @@
+Step #1: Increase memory by configuring “domain.xml”
+
+In linux, it is located under */glassfish3/glassfish/domains/domain1/config
+(in windows C:\glassfish3\glassfish\domains\domain1\config)
+
+There are two configs in domain.xml, server-config and default-config. Search for "-XX:MaxPermSize=" in server-config and set its value to 256m or higher.
+(i.e. <jvm-options>-XX:MaxPermSize=256m</jvm-options>)
+
+(Why server-config?
+Because, from the Glassfish 3.1.1 doc:
+The default-config configuration is a special configuration that acts as a template for creating named configurations. Clusters and instances cannot refer to the default-config configuration. The default-config configuration can only be copied to create configurations.)
+
+ 
+Step #2: Restart server
+
+Navigate to */glassfish3/bin
+and run ” ./asadmin restart-domain domain1 “
+or first ” ./asadmin stop-domain domain1 ” then “./asadmin start-domain“.
+
+ 
+Note:
+
+If the server not responding to these commands, first kill the glassfish process to free the port on which it was running (say 8080).
+For linux based os:
+
+- open terminal and type ” -sudo netstat -npl | grep 8080 “
+- this will result in something like ” tcp6 0 0 :::8686 :::* LISTEN 10241/java “
+- then use ” kill -9 10241 ” to kill that process (10241 in this case)
+- Now try to start glassfish, it should start.
